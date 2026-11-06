@@ -53,7 +53,7 @@ class WhistleDetectionService : Service() {
         when (intent?.action) {
             ACTION_START -> startListening()
             ACTION_STOP -> stopListening()
-            ACTION_STOP_ALARM -> alarmController.stopAlarm()
+            ACTION_STOP_ALARM -> handleStopAlarm()
         }
         return START_STICKY
     }
@@ -91,28 +91,53 @@ class WhistleDetectionService : Service() {
                 val now = System.currentTimeMillis()
 
                 val event = stateMachine.process(conf, now)
+                val count = stateMachine.whistleCount
+                val target = AppSessionRepository.sessionState.value.targetCount
+                val targetReached = count >= target
 
                 AppSessionRepository.updateState { current ->
                     val newHistory = if (event != null) current.whistleHistory + event else current.whistleHistory
-                    val targetReached = stateMachine.whistleCount >= current.targetCount
                     current.copy(
-                        currentCount = stateMachine.whistleCount,
+                        currentCount = count,
                         whistleState = stateMachine.currentState,
                         currentConfidence = conf,
                         isTargetReached = targetReached,
+                        isListening = !targetReached,
                         whistleHistory = newHistory
                     )
                 }
 
                 updateNotification()
 
-                if (AppSessionRepository.sessionState.value.isTargetReached && !alarmController.isAlarmPlaying) {
-                    alarmController.triggerAlarm()
+                if (targetReached) {
+                    if (!alarmController.isAlarmPlaying) {
+                        alarmController.triggerAlarm()
+                    }
+                    try {
+                        audioRecorder?.stop()
+                    } catch (_: Exception) {}
+                    audioRecorder = null
+                    try {
+                        whistleDetector?.close()
+                    } catch (_: Exception) {}
+                    whistleDetector = null
+                    break
                 }
 
                 delay(400)
             }
         }
+    }
+
+    private fun handleStopAlarm() {
+        alarmController.stopAlarm()
+        AppSessionRepository.updateState { it.copy(isTargetReached = false, isListening = false) }
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+        }
+        wakeLock = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun stopListening() {
@@ -157,8 +182,18 @@ class WhistleDetectionService : Service() {
     }
 
     private fun buildNotification(state: AppSessionState): Notification {
-        val stopIntent = Intent(this, WhistleDetectionService::class.java).apply { action = ACTION_STOP }
-        val stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE)
+        val actionIntent = if (state.isTargetReached) {
+            Intent(this, WhistleDetectionService::class.java).apply { action = ACTION_STOP_ALARM }
+        } else {
+            Intent(this, WhistleDetectionService::class.java).apply { action = ACTION_STOP }
+        }
+        val actionPendingIntent = PendingIntent.getService(
+            this,
+            0,
+            actionIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val actionTitle = if (state.isTargetReached) "Stop Alarm" else "Stop"
 
         val contentText = if (state.isTargetReached) {
             "TARGET REACHED! ${state.currentCount}/${state.targetCount} whistles"
@@ -166,12 +201,14 @@ class WhistleDetectionService : Service() {
             "Whistles: ${state.currentCount} / ${state.targetCount} • Listening..."
         }
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val channelId = if (state.isTargetReached) ALARM_CHANNEL_ID else CHANNEL_ID
+
+        return NotificationCompat.Builder(this, channelId)
             .setContentTitle("Whistl — Cooker Counter")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, actionTitle, actionPendingIntent)
             .build()
     }
 
