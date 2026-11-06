@@ -1,3 +1,7 @@
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["whistl*"]
+
 [project]
 name = "whistl"
 version = "0.1.0"

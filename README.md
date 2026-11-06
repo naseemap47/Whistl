@@ -85,17 +85,29 @@ Whistl/
 │   ├── settings.gradle.kts
 │   └── gradlew
 │
-├── dataset/                         # Raw audio recordings (whistle & background)
-├── dataset_norm/                    # Normalized and split training dataset
-├── collect_data.py                  # Microphone audio sample recorder
-├── split_audio.py                   # Slices audio into 1-second WAV snippets
-├── data_norm.py                     # Peak-normalizes audio dataset
-├── train_yamnet.py                  # Trains transfer learning classifier head
-├── test_yamnet.py                   # Evaluates precision, recall, F1-score & confusion matrix
-├── export_end_to_end_tflite.py      # Combines YAMNet + classifier into unified TFLite model
-├── test_exported_tflite.py          # Verifies exported TFLite model against real samples
-├── live.py                          # Live microphone test in terminal (Keras .h5)
-└── infer_tflite.py                  # Live microphone test in terminal (TFLite)
+├── data/                            # Training & validation datasets
+│   ├── raw/                         # Raw, un-sliced audio recordings
+│   ├── processed/                   # Audio split into 1-second WAV clips
+│   └── normalized/                  # Peak-normalized & balanced audio dataset
+│
+├── models/                          # Trained models and exported TFLite binaries
+│   ├── whistle_classifier.h5        # Trained Keras classifier head
+│   ├── whistle_classifier_int8.tflite
+│   └── whistle_detector_end_to_end.tflite
+│
+├── whistl/                          # Core Python ML package
+│   ├── config.py                    # Centralized hyperparameters & filesystem paths
+│   ├── data/                        # Audio collection, splitting, and normalization
+│   ├── models/                      # Model architecture, training, and TFLite export
+│   └── inference/                   # Real-time microphone and batch evaluation engines
+│
+└── scripts/                         # Command-line entry points
+    ├── record.py                    # Microphone audio sample recorder
+    ├── prepare_data.py              # Slices and peak-normalizes audio datasets
+    ├── train.py                     # Trains classifier head on YAMNet embeddings
+    ├── evaluate.py                  # Evaluates precision, recall, & confusion matrix
+    ├── export.py                    # Exports unified end-to-end TFLite model
+    └── live.py                      # Live microphone detection in terminal
 ```
 
 ---
@@ -118,23 +130,36 @@ Whistl/
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r pyproject.toml  # or uv sync
+pip install -e .  # or uv sync
+```
+
+#### Collect & Prepare Audio Data
+```bash
+# Record clips from microphone
+python scripts/record.py --label whistle --count 20
+
+# Split long audio and normalize dataset
+python scripts/prepare_data.py --split path/to/recording.wav --label whistle
+python scripts/prepare_data.py --normalize
 ```
 
 #### Train the Whistle Classifier
 ```bash
-python train_yamnet.py
+python scripts/train.py --epochs 20
 ```
 
 #### Export Unified End-to-End TFLite Model
 ```bash
-python export_end_to_end_tflite.py
-python test_exported_tflite.py
+# Automatically exports and copies model to Android assets
+python scripts/export.py
+
+# Evaluate model accuracy on normalized dataset
+python scripts/evaluate.py
 ```
 
 #### Test Live Whistle Detection via PC Microphone
 ```bash
-python live.py
+python scripts/live.py --threshold 0.85
 ```
 
 ---

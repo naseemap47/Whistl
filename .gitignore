@@ -219,10 +219,13 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# audio data
+# Audio data
+/data/
 *.wav
-dataset*.superpowers/
 
-# model
-*.h5
-*.tflite
+# Models
+models/*.h5
+models/*.tflite
+
+# Scratch
+.superpowers/
