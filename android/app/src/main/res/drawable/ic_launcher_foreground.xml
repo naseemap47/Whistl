@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Sound / acoustic wave ripples radiating from whistle -->
+    <path
+        android:strokeColor="#FFAB00"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M42,28 A16,16 0 0,1 66,28" />
+    <path
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M36,22 A24,24 0 0,1 72,22" />
+
+    <!-- Dynamic Whistle Steam Jets -->
+    <!-- Center steam column -->
+    <path
+        android:fillColor="#E0F7FA"
+        android:pathData="M52,38 C50,32 58,26 54,20 C56,26 48,32 52,38 Z" />
+    <!-- Left steam plume -->
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M48,40 C44,35 45,28 41,24 C43,29 46,35 48,40 Z" />
+    <!-- Right steam plume -->
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M60,40 C64,35 63,28 67,24 C65,29 62,35 60,40 Z" />
+
+    <!-- Whistle Weight Valve (Top) -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M51,40 h6 v5 h-6 z" />
+    <path
+        android:fillColor="#FFA000"
+        android:pathData="M49,45 h10 v4 h-10 z" />
+
+    <!-- Cooker Lid (Domed) -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M30,56 C30,49 40,49 54,49 C68,49 78,49 78,56 Z" />
+    <!-- Lid Rim Bar -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M28,55 h52 v4 h-52 z" />
+
+    <!-- Cooker Pot Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,59 h48 v18 C78,82 72,86 54,86 C36,86 30,82 30,77 Z" />
+    <!-- Pot Body Shadow / Metal Gradient Accent -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M30,59 h8 v18 C38,82 34,84 30,77 Z" />
+
+    <!-- Cooker Handle (Right side) -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M78,56 h16 c2,0 3,1 3,3 v2 c0,2 -1,3 -3,3 h-16 z" />
+
+    <!-- Front Flame Accent (Subtle Heat Indicator) -->
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M52,70 C52,66 54,64 54,62 C54,64 56,66 56,70 C56,72 54,74 54,74 C54,74 52,72 52,70 Z" />
+
+</vector>
