@@ -128,9 +128,9 @@ Whistl/
 
 #### Setup Virtual Environment
 ```bash
-python3 -m venv .venv
+uv init
+uv sync
 source .venv/bin/activate
-pip install -e .  # or uv sync
 ```
 
 #### Collect & Prepare Audio Data
