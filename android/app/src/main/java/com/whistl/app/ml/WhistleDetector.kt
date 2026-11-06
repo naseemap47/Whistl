@@ -33,13 +33,12 @@ class WhistleDetector(
     fun detect(waveform: FloatArray): DetectionResult {
         require(waveform.size == 15600) { "Input waveform must be exactly 15600 samples, got ${waveform.size}" }
 
-        val output = Array(1) { FloatArray(2) }
+        val output = FloatArray(2)
         interpreter.run(waveform, output)
 
-        val probs = output[0]
         return DetectionResult(
-            backgroundProb = probs[0],
-            whistleProb = probs[1]
+            backgroundProb = output[0],
+            whistleProb = output[1]
         )
     }
 
