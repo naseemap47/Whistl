@@ -61,4 +61,14 @@ class RingBufferTest {
         val buffer = RingBuffer(capacity = 5)
         buffer.readNormalizedFloatSnapshot(FloatArray(3))
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testRingBufferZeroCapacity() {
+        RingBuffer(capacity = 0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testRingBufferNegativeCapacity() {
+        RingBuffer(capacity = -1)
+    }
 }

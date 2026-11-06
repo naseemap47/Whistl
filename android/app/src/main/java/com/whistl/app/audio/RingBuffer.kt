@@ -1,6 +1,10 @@
 package com.whistl.app.audio
 
 class RingBuffer(val capacity: Int) {
+    init {
+        require(capacity > 0) { "Capacity must be positive" }
+    }
+
     private val buffer = ShortArray(capacity)
     private var writeIndex = 0
     private var count = 0

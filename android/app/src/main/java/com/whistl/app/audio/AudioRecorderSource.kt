@@ -30,9 +30,18 @@ class AudioRecorderSource(
         )
         audioRecord = record
 
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            try {
+                record.release()
+            } catch (_: Exception) {}
+            audioRecord = null
+            isRecording.set(false)
+            return
+        }
+
         record.startRecording()
         recordingThread = Thread {
-            val chunk = ShortArray(1600) // 100ms at 16kHz
+            val chunk = ShortArray(sampleRate / 10) // 100ms
             while (isRecording.get()) {
                 val read = record.read(chunk, 0, chunk.size)
                 if (read > 0) {
@@ -46,10 +55,16 @@ class AudioRecorderSource(
         if (!isRecording.getAndSet(false)) return
         try {
             audioRecord?.stop()
+        } catch (_: Exception) {}
+        try {
+            recordingThread?.join(500)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        recordingThread = null
+        try {
             audioRecord?.release()
         } catch (_: Exception) {}
         audioRecord = null
-        recordingThread?.join(500)
-        recordingThread = null
     }
 }
