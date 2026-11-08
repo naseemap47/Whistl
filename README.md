@@ -1,5 +1,9 @@
 # Whistl 🍲💨
 
+<p align="center">
+  <img src="docs/images/whistl_app_icon.png" width="120" height="120" alt="Whistl App Icon" style="border-radius: 24px;" />
+</p>
+
 **Whistl** is an AI-powered smart kitchen assistant that automatically listens to and counts pressure cooker whistles in real-time. Once your target whistle count is reached, it rings a loud alarm and vibrates to alert you to turn off the stove flame—even while running in the background with your phone locked on the kitchen counter.
 
 ---

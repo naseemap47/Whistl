@@ -35,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,7 +62,8 @@ fun WhistleCounterScreen(
     onStopListening: () -> Unit,
     onSetTarget: (Int) -> Unit,
     onReset: () -> Unit,
-    onDismissAlarm: () -> Unit
+    onDismissAlarm: () -> Unit,
+    onAddMoreWhistles: () -> Unit
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -158,12 +160,18 @@ fun WhistleCounterScreen(
                             }
                         }
 
-                        // Presets Chips
+                        // Presets Chips (1 to 5 + dynamic custom chip if target > 5)
+                        val displayPresets = if (state.targetCount > 5) {
+                            listOf(1, 2, 3, 4, 5, state.targetCount)
+                        } else {
+                            listOf(1, 2, 3, 4, 5)
+                        }
+
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            listOf(1, 2, 3, 4, 5).forEach { preset ->
+                            displayPresets.forEach { preset ->
                                 val isSelected = state.targetCount == preset
                                 Box(
                                     modifier = Modifier
@@ -173,7 +181,7 @@ fun WhistleCounterScreen(
                                             else MaterialTheme.colorScheme.surfaceVariant
                                         )
                                         .clickable(enabled = !state.isListening) { onSetTarget(preset) }
-                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                        .padding(horizontal = if (displayPresets.size > 5) 9.dp else 13.dp, vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -202,6 +210,39 @@ fun WhistleCounterScreen(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(18.dp))
                             }
+                        }
+                    }
+
+                    // Target Summary Status Pill at Bottom of Card
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (state.targetCount > 5) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = null,
+                                tint = if (state.targetCount > 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (state.targetCount > 5) {
+                                    "Target set to ${state.targetCount} whistles (custom)"
+                                } else {
+                                    "Target set to ${state.targetCount} ${if (state.targetCount == 1) "whistle" else "whistles"}"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (state.targetCount > 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -336,31 +377,93 @@ fun WhistleCounterScreen(
                 }
             }
 
-            // Primary Start/Stop Hero Button
-            Button(
-                onClick = { if (state.isListening) onStopListening() else onStartListening() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (state.isListening) Color(0xFFE53935) else Color(0xFF00C853)
-                ),
-                shape = RoundedCornerShape(20.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            // Bottom Action Area with Target Clarification Banner
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = if (state.isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = if (state.isListening) "Stop Listening" else "Start Listening",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (state.targetCount > 5) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    modifier = Modifier.padding(bottom = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (state.isListening) {
+                                "Target: ${state.targetCount} whistles • ${(state.targetCount - state.currentCount).coerceAtLeast(0)} remaining"
+                            } else {
+                                "Target: ${state.targetCount} whistles • Alarm triggers at count ${state.targetCount}"
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (state.targetCount > 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Primary Start/Stop Hero Button
+                val isTargetPassed = state.currentCount >= state.targetCount && state.currentCount > 0
+                Button(
+                    onClick = {
+                        when {
+                            state.isListening -> onStopListening()
+                            isTargetPassed -> onAddMoreWhistles()
+                            else -> onStartListening()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(62.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = when {
+                            state.isListening -> Color(0xFFE53935)
+                            isTargetPassed -> MaterialTheme.colorScheme.primary
+                            else -> Color(0xFF00C853)
+                        }
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = when {
+                            state.isListening -> Icons.Default.MicOff
+                            isTargetPassed -> Icons.Default.Add
+                            else -> Icons.Default.Mic
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = when {
+                                state.isListening -> "Stop Listening"
+                                isTargetPassed -> "+1 More Whistle & Listen"
+                                state.currentCount > 0 -> "Continue Listening"
+                                else -> "Start Listening"
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = when {
+                                state.isListening -> "Counting whistles until ${state.targetCount}"
+                                isTargetPassed -> "Add 1 whistle • Target: ${state.targetCount + 1}"
+                                state.currentCount > 0 -> "${state.targetCount - state.currentCount} whistles remaining"
+                                else -> "Ready • Target: ${state.targetCount} whistles"
+                            },
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
 
@@ -396,7 +499,7 @@ fun WhistleCounterScreen(
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Target of ${state.targetCount} whistles completed.\nTurn off the stove flame!",
+                            text = "Target of ${state.targetCount} whistles completed.\nTurn off the stove flame or add more whistles.",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center,
@@ -405,20 +508,41 @@ fun WhistleCounterScreen(
                     }
                 },
                 confirmButton = {
-                    Button(
-                        onClick = onDismissAlarm,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
-                        shape = RoundedCornerShape(14.dp)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Turn Off Stove & Stop Alarm",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
+                        Button(
+                            onClick = onDismissAlarm,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(
+                                text = "Turn Off Stove & Stop Alarm",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onAddMoreWhistles,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "+1 More Whistle & Continue",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.surface,

@@ -73,9 +73,9 @@ class WhistleStateMachine(
         return null
     }
 
-    fun reset() {
+    fun reset(initialCount: Int = 0) {
         currentState = WhistleState.IDLE
-        whistleCount = 0
+        whistleCount = initialCount
         whistleStartTimeMs = 0L
         cooldownStartTimeMs = 0L
         peakConfidence = 0f

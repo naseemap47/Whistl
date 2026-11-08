@@ -28,8 +28,9 @@ class WhistleDetectionService : Service() {
         const val ACTION_START = "com.whistl.app.action.START"
         const val ACTION_STOP = "com.whistl.app.action.STOP"
         const val ACTION_STOP_ALARM = "com.whistl.app.action.STOP_ALARM"
+        const val ACTION_ADD_WHISTLE = "com.whistl.app.action.ADD_WHISTLE"
         const val NOTIFICATION_ID = 1001
-        const val CHANNEL_ID = "whistl_listening_channel"
+        const val CHANNEL_ID = "whistl_listening_channel_v2"
         const val ALARM_CHANNEL_ID = "whistl_alarm_channel"
     }
 
@@ -54,14 +55,17 @@ class WhistleDetectionService : Service() {
             ACTION_START -> startListening()
             ACTION_STOP -> stopListening()
             ACTION_STOP_ALARM -> handleStopAlarm()
+            ACTION_ADD_WHISTLE -> handleAddWhistle()
         }
         return START_STICKY
     }
 
     private fun startListening() {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Whistl::ListeningLock").apply {
-            acquire(60 * 60 * 1000L) // 1 hour safety limit
+        if (wakeLock == null) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Whistl::ListeningLock").apply {
+                acquire(60 * 60 * 1000L) // 1 hour safety limit
+            }
         }
 
         val notification = buildNotification(AppSessionRepository.sessionState.value)
@@ -73,17 +77,26 @@ class WhistleDetectionService : Service() {
 
         whistleDetector = WhistleDetector(this)
         ringBuffer.clear()
-        stateMachine.reset()
+
+        // Preserve current count if user is adding more whistles to an ongoing session
+        val existingCount = AppSessionRepository.sessionState.value.currentCount
+        stateMachine.reset(initialCount = existingCount)
 
         AppSessionRepository.updateState { it.copy(isListening = true, isTargetReached = false) }
 
+        audioRecorder?.stop()
         audioRecorder = AudioRecorderSource(sampleRate = 16000)
         audioRecorder?.start { samples, length ->
             ringBuffer.write(samples, length)
         }
 
+        inferenceJob?.cancel()
         inferenceJob = serviceScope.launch {
             val inputBuffer = FloatArray(15600)
+            var lastNotifiedCount = -1
+            var lastTargetReached = false
+            var lastTarget = -1
+
             while (isActive) {
                 ringBuffer.readNormalizedFloatSnapshot(inputBuffer)
                 val result = whistleDetector?.detect(inputBuffer)
@@ -107,7 +120,13 @@ class WhistleDetectionService : Service() {
                     )
                 }
 
-                updateNotification()
+                // ONLY update notification when count, target, or targetReached actually changes
+                if (count != lastNotifiedCount || targetReached != lastTargetReached || target != lastTarget) {
+                    lastNotifiedCount = count
+                    lastTargetReached = targetReached
+                    lastTarget = target
+                    updateNotification()
+                }
 
                 if (targetReached) {
                     if (!alarmController.isAlarmPlaying) {
@@ -127,6 +146,20 @@ class WhistleDetectionService : Service() {
                 delay(400)
             }
         }
+    }
+
+    private fun handleAddWhistle() {
+        alarmController.stopAlarm()
+        val current = AppSessionRepository.sessionState.value
+        val newTarget = maxOf(current.currentCount + 1, current.targetCount + 1)
+        AppSessionRepository.updateState {
+            it.copy(
+                targetCount = newTarget,
+                isTargetReached = false,
+                isListening = true
+            )
+        }
+        startListening()
     }
 
     private fun handleStopAlarm() {
@@ -162,13 +195,18 @@ class WhistleDetectionService : Service() {
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
+
+            // Default importance listening service channel (alerting by default, not silent)
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Whistl Listening Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Displays active listening status for cooker whistles" }
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Displays active listening status for cooker whistles"
+            }
             manager?.createNotificationChannel(channel)
 
+            // High importance alarm channel for when target is reached
             val alarmChannel = NotificationChannel(
                 ALARM_CHANNEL_ID,
                 "Whistle Target Alarms",
@@ -182,34 +220,63 @@ class WhistleDetectionService : Service() {
     }
 
     private fun buildNotification(state: AppSessionState): Notification {
-        val actionIntent = if (state.isTargetReached) {
-            Intent(this, WhistleDetectionService::class.java).apply { action = ACTION_STOP_ALARM }
-        } else {
-            Intent(this, WhistleDetectionService::class.java).apply { action = ACTION_STOP }
-        }
-        val actionPendingIntent = PendingIntent.getService(
-            this,
-            0,
-            actionIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        val actionTitle = if (state.isTargetReached) "Stop Alarm" else "Stop"
+        val channelId = if (state.isTargetReached) ALARM_CHANNEL_ID else CHANNEL_ID
 
         val contentText = if (state.isTargetReached) {
-            "TARGET REACHED! ${state.currentCount}/${state.targetCount} whistles"
+            "TARGET REACHED! ${state.currentCount}/${state.targetCount} whistles completed"
         } else {
             "Whistles: ${state.currentCount} / ${state.targetCount} • Listening..."
         }
 
-        val channelId = if (state.isTargetReached) ALARM_CHANNEL_ID else CHANNEL_ID
-
-        return NotificationCompat.Builder(this, channelId)
+        val builder = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Whistl — Cooker Counter")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, actionTitle, actionPendingIntent)
-            .build()
+            .setOnlyAlertOnce(true)
+
+        if (state.isTargetReached) {
+            builder.setCategory(NotificationCompat.CATEGORY_ALARM)
+            builder.setPriority(NotificationCompat.PRIORITY_HIGH)
+
+            // Action 1: Stop Alarm
+            val stopAlarmIntent = Intent(this, WhistleDetectionService::class.java).apply {
+                action = ACTION_STOP_ALARM
+            }
+            val stopAlarmPending = PendingIntent.getService(
+                this,
+                101,
+                stopAlarmIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop Alarm", stopAlarmPending)
+
+            // Action 2: +1 Whistle (Keep Listening)
+            val addWhistleIntent = Intent(this, WhistleDetectionService::class.java).apply {
+                action = ACTION_ADD_WHISTLE
+            }
+            val addWhistlePending = PendingIntent.getService(
+                this,
+                102,
+                addWhistleIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(android.R.drawable.ic_input_add, "+1 Whistle", addWhistlePending)
+        } else {
+            // Stop Listening Action
+            val stopIntent = Intent(this, WhistleDetectionService::class.java).apply {
+                action = ACTION_STOP
+            }
+            val stopPending = PendingIntent.getService(
+                this,
+                100,
+                stopIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPending)
+        }
+
+        return builder.build()
     }
 
     private fun updateNotification() {
