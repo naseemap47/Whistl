@@ -30,7 +30,7 @@ class WhistleDetectionService : Service() {
         const val ACTION_STOP_ALARM = "com.whistl.app.action.STOP_ALARM"
         const val ACTION_ADD_WHISTLE = "com.whistl.app.action.ADD_WHISTLE"
         const val NOTIFICATION_ID = 1001
-        const val CHANNEL_ID = "whistl_listening_channel"
+        const val CHANNEL_ID = "whistl_listening_channel_v2"
         const val ALARM_CHANNEL_ID = "whistl_alarm_channel"
     }
 
@@ -196,16 +196,13 @@ class WhistleDetectionService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
 
-            // Silent foreground service channel (prevents continuous notification sounds)
+            // Default importance listening service channel (alerting by default, not silent)
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Whistl Listening Service",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Displays active listening status for cooker whistles"
-                setSound(null, null)
-                enableVibration(false)
-                setShowBadge(false)
             }
             manager?.createNotificationChannel(channel)
 
@@ -266,8 +263,6 @@ class WhistleDetectionService : Service() {
             )
             builder.addAction(android.R.drawable.ic_input_add, "+1 Whistle", addWhistlePending)
         } else {
-            builder.setSilent(true)
-
             // Stop Listening Action
             val stopIntent = Intent(this, WhistleDetectionService::class.java).apply {
                 action = ACTION_STOP
