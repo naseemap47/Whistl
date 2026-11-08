@@ -48,6 +48,16 @@ class MainActivity : ComponentActivity() {
                         }
                         startService(stopAlarmIntent)
                         AppSessionRepository.updateState { it.copy(isTargetReached = false) }
+                    },
+                    onAddMoreWhistles = {
+                        val addWhistleIntent = Intent(this, WhistleDetectionService::class.java).apply {
+                            action = WhistleDetectionService.ACTION_ADD_WHISTLE
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(addWhistleIntent)
+                        } else {
+                            startService(addWhistleIntent)
+                        }
                     }
                 )
             }
