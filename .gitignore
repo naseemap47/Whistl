@@ -229,3 +229,10 @@ models/*.tflite
 
 # Scratch
 .superpowers/
+
+# Android
+android/local.properties
+.gradle/
+build/
+*.apk
+*.aab
