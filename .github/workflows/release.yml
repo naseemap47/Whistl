@@ -31,9 +31,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build Debug APK
+      - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
       - name: Prepare Release Artifacts
         run: |
@@ -42,8 +42,8 @@ jobs:
           if [ -z "$TAG" ] || [ "$TAG" = "master" ] || [ "$TAG" = "feat/ui" ]; then
             TAG="${{ github.event.inputs.tag_name || 'v1.0' }}"
           fi
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-artifacts/Whistl.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release-artifacts/Whistl-${TAG}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk release-artifacts/Whistl.apk
+          cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/Whistl-${TAG}.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
