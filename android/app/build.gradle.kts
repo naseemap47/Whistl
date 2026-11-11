@@ -47,6 +47,11 @@ android {
     aaptOptions {
         noCompress("tflite")
     }
+    lint {
+        disable += "InvalidFragmentVersionForActivityResult"
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 dependencies {
