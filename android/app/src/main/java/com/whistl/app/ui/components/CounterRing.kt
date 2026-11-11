@@ -70,9 +70,9 @@ fun CounterRing(
 
     val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
 
-    Box(contentAlignment = Alignment.Center, modifier = modifier.size(240.dp)) {
-        Canvas(modifier = Modifier.size(230.dp)) {
-            val strokeWidth = 18.dp.toPx()
+    Box(contentAlignment = Alignment.Center, modifier = modifier.size(220.dp)) {
+        Canvas(modifier = Modifier.size(210.dp)) {
+            val strokeWidth = 16.dp.toPx()
 
             // Outer ambient pulse glow when listening
             if (isListening) {
