@@ -26,7 +26,7 @@ import com.google.android.gms.ads.LoadAdError
  * Google's official sample Banner ad unit ID for testing.
  * Replace with your production Ad Unit ID before publishing to Google Play.
  */
-const val TEST_BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/6300978111"
+const val BANNER_AD_UNIT_ID = "ca-app-pub-5094398915127531/5472370750"
 
 /**
  * A Jetpack Compose wrapper for Google AdMob Banner ads.
