@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.whistl.app.service.AppSessionState
 import com.whistl.app.ui.components.AudioConfidenceBar
+import com.whistl.app.ui.components.BannerAdView
 import com.whistl.app.ui.components.CounterRing
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -66,13 +68,18 @@ fun WhistleCounterScreen(
     onAddMoreWhistles: () -> Unit
 ) {
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            BannerAdView(
+                modifier = Modifier.navigationBarsPadding()
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -256,7 +263,7 @@ fun WhistleCounterScreen(
                 isListening = state.isListening
             )
 
-            // Live Audio Visualizer or Idle Helper
+            // Live Audio Visualizer or Compact Idle Helper
             if (state.isListening) {
                 AudioConfidenceBar(
                     confidence = state.currentConfidence,
@@ -264,22 +271,22 @@ fun WhistleCounterScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "💡", fontSize = 20.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(text = "💡", fontSize = 13.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Set your target whistles and tap Start Listening once your cooker is on the stove.",
-                            fontSize = 12.sp,
+                            text = "Set target and tap Start Listening once cooker is on stove.",
+                            fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 16.sp
+                            lineHeight = 14.sp
                         )
                     }
                 }
@@ -289,8 +296,8 @@ fun WhistleCounterScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp),
-                shape = RoundedCornerShape(20.dp),
+                    .height(112.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
